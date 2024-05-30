@@ -2,6 +2,18 @@ apiVersion: v1
 entries:
   spicedb-operator:
   - apiVersion: v2
+    appVersion: v1.15.0
+    created: "2024-05-30T07:30:28.475405291Z"
+    description: A Helm chart to install the SpiceDB Operator
+    digest: 7cec5e14289b3842b7f8499a421e08a666c3b52a9fe2c606a5cf7672806fb95d
+    name: spicedb-operator
+    sources:
+    - https://github.com/bushelpowered/spicedb-operator-chart
+    type: application
+    urls:
+    - https://github.com/bushelpowered/spicedb-operator-chart/releases/download/spicedb-operator-1.0.14/spicedb-operator-1.0.14.tgz
+    version: 1.0.14
+  - apiVersion: v2
     appVersion: v1.14
     created: "2024-03-22T18:55:23.617137709Z"
     description: A Helm chart to install the SpiceDB Operator
@@ -97,4 +109,4 @@ entries:
     urls:
     - https://github.com/bushelpowered/spicedb-operator-chart/releases/download/spicedb-operator-1.0.0/spicedb-operator-1.0.0.tgz
     version: 1.0.0
-generated: "2024-03-22T18:55:23.617325359Z"
+generated: "2024-05-30T07:30:28.475445657Z"
