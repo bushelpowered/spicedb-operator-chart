@@ -13,6 +13,10 @@ spec:
   selector:
     matchLabels:
       {{- include "spicedb-operator.selectorLabels" . | nindent 6 }}
+  {{- if .Values.strategy }}
+  strategy:
+    {{- toYaml .Values.strategy | nindent 4 }}
+  {{- end }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -20,31 +24,22 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "spicedb-operator.selectorLabels" . | nindent 8 }}
+        {{- include "spicedb-operator.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "spicedb-operator.serviceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - run
             - -v=4
             - --crd=false
             - --config
-            - /opt/operator/config.yaml
-          ports:
-            - containerPort: 8080
-              name: prometheus
-              protocol: TCP
+            - /opt/operator/update-graph.yaml
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -54,6 +49,10 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 15
+          ports:
+            - containerPort: 8080
+              name: prometheus
+              protocol: TCP
           readinessProbe:
             httpGet:
               path: /healthz
@@ -62,9 +61,20 @@ spec:
             periodSeconds: 1
             successThreshold: 1
             timeoutSeconds: 15
-          terminationMessagePolicy: FallbackToLogsOnError
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          terminationMessagePolicy: FallbackToLogsOnError
+          volumeMounts:
+            - mountPath: /opt/operator
+              name: config
+              readOnly: true
+
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      serviceAccountName: {{ include "spicedb-operator.serviceAccountName" . }}
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -77,3 +87,8 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: update-graph
+          name: config

@@ -31,23 +31,27 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
-Common labels
-*/}}
-{{- define "spicedb-operator.labels" -}}
-helm.sh/chart: {{ include "spicedb-operator.chart" . }}
-{{ include "spicedb-operator.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
 Selector labels
 */}}
 {{- define "spicedb-operator.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "spicedb-operator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/name: {{ include "spicedb-operator.name" . }}
+{{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "spicedb-operator.labels" -}}
+app: {{ include "spicedb-operator.name" . }}
+{{ include "spicedb-operator.selectorLabels" . }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+{{- with .Values.commonLabels }}
+{{- toYaml . | nindent 0 }}
+{{- end }}
+helm.sh/chart: {{ include "spicedb-operator.chart" . }}
 {{- end }}
 
 {{/*
