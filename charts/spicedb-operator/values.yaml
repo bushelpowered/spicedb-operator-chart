@@ -12,9 +12,6 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# Install the SpiceDBCluster CRD
-installCRDs: true
-
 # Labels to add to all standard Kubernetes resources, including the operator's deployment and pods
 commonLabels: {}
 
