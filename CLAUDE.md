@@ -35,11 +35,11 @@ helm package charts/spicedb-operator/
 # Regenerate README.md from README.md.gotmpl (run after changing Chart.yaml or README.md.gotmpl)
 helm-docs
 
-# Run pre-commit checks on all files
-pre-commit run --all-files
+# Run pre-commit checks on all files (SKIP=no-commit-to-branch avoids failure when main is checked out)
+SKIP=no-commit-to-branch pre-commit run --show-diff-on-failure --color=always --all-files
 
 # Run a specific pre-commit hook
-pre-commit run <hook-id> --all-files
+SKIP=no-commit-to-branch pre-commit run <hook-id> --show-diff-on-failure --color=always --all-files
 ```
 
 ## Pre-commit
