@@ -34,7 +34,29 @@ helm package charts/spicedb-operator/
 
 # Regenerate README.md from README.md.gotmpl (run after changing Chart.yaml or README.md.gotmpl)
 helm-docs
+
+# Run pre-commit checks on all files
+pre-commit run --all-files
+
+# Run a specific pre-commit hook
+pre-commit run <hook-id> --all-files
 ```
+
+## Pre-commit
+
+This repo uses [pre-commit](https://pre-commit.com/) to enforce formatting and catch common issues. The configuration is in `.pre-commit-config.yaml`. Hooks run automatically on `git commit`; run `pre-commit install` to set up the git hook if needed.
+
+Key conventions enforced by pre-commit:
+
+- **YAML formatting**: `yamlfmt` auto-formats YAML files (indentless arrays, padded line comments, retained line breaks). Helm template files under `charts/*/templates/` are excluded since they contain Go template syntax.
+- **YAML extension**: All YAML files must use the `.yaml` extension, not `.yml`.
+- **Helm linting**: `helmlint` runs `helm lint` on all charts.
+- **Helm docs**: `helm-docs` automatically regenerates `README.md` from `README.md.gotmpl` when chart files change.
+- **Shell scripts**: `shellcheck` validates any shell scripts.
+- **Trailing whitespace and EOF**: Files must have no trailing whitespace and end with a newline.
+- **JSON formatting**: JSON files are auto-formatted with `pretty-format-json`.
+- **Security**: Checks for accidentally committed AWS credentials and private keys.
+- **Git hygiene**: Prevents commits directly to the default branch, checks for merge conflict markers, and flags large files.
 
 ## Updating to a New SpiceDB Operator Version
 
@@ -87,4 +109,4 @@ This chart is derived from the `bundle.yaml` files published in the [SpiceDB Ope
 
 ## Release Process
 
-Releases are automated via GitHub Actions (`.github/workflows/release.yml`). Pushing to `main` triggers `helm/chart-releaser-action` which packages and publishes the chart to GitHub Pages.
+Releases are automated via GitHub Actions (`.github/workflows/release.yaml`). Pushing to `main` triggers `helm/chart-releaser-action` which packages and publishes the chart to GitHub Pages.
