@@ -93,3 +93,12 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# -- SpiceDB workload image settings merged into the operator global config (`update-graph.yaml`). See [Authzed operator docs](https://authzed.com/docs/spicedb/ops/operator#global-config).
+spiceDB:
+  # -- Default SpiceDB container image repository (path without tag). Must match your mirror if using a private registry.
+  imageName: ghcr.io/authzed/spicedb
+  # -- Allowlisted SpiceDB image repositories (each path without tag). When empty, the `allowedImages` key is omitted so behavior matches older chart releases.
+  allowedImages: []
+  # -- When true, sets `disableImageValidation: true` in operator global config (suppresses warnings for images outside the allowlist).
+  disableImageValidation: false

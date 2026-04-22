@@ -3289,4 +3289,13 @@ data:
         tag: v1.3.0
       - id: v1.2.0
         tag: v1.2.0
-    imageName: ghcr.io/authzed/spicedb
+{{- if .Values.spiceDB.allowedImages }}
+    allowedImages:
+{{- range .Values.spiceDB.allowedImages }}
+      - {{ . | quote }}
+{{- end }}
+{{- end }}
+{{- if .Values.spiceDB.disableImageValidation }}
+    disableImageValidation: true
+{{- end }}
+    imageName: {{ .Values.spiceDB.imageName | quote }}
