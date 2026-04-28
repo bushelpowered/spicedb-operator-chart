@@ -1,13 +1,13 @@
 # spicedb-operator
 
-![Version: 2.5.0](https://img.shields.io/badge/Version-2.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v1.23.0](https://img.shields.io/badge/AppVersion-v1.23.0-informational?style=flat-square)
+![Version: 2.6.0](https://img.shields.io/badge/Version-2.6.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v1.24.0](https://img.shields.io/badge/AppVersion-v1.24.0-informational?style=flat-square)
 
 A Helm chart to install the SpiceDB Operator
 
 ## Source Code
 
 * <https://github.com/bushelpowered/spicedb-operator-chart>
-* <https://github.com/authzed/spicedb-operator/releases/tag/v1.23.0>
+* <https://github.com/authzed/spicedb-operator/releases/tag/v1.24.0>
 
 ## Values
 
