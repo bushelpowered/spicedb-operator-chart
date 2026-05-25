@@ -1,0 +1,73 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v6.0.0
+  hooks:
+  # Security
+  - id: detect-aws-credentials
+    args: ['--allow-missing-credentials']
+  - id: detect-private-key
+
+  # Standard checks
+  - id: check-executables-have-shebangs
+  - id: check-json
+  - id: check-symlinks
+  - id: check-toml
+  - id: check-yaml
+    # Skip Helm templates (they're not valid plain YAML due to {{ ... }})
+    exclude: '^charts/[^/]+/templates/'
+  - id: end-of-file-fixer
+    exclude: '.*\.svg$'
+  - id: pretty-format-json
+    args:
+    - '--autofix'
+    - '--no-ensure-ascii'
+  - id: trailing-whitespace
+    args: ['--markdown-linebreak-ext=md']
+
+  # Cross platform
+  - id: check-case-conflict
+  - id: destroyed-symlinks
+  - id: mixed-line-ending
+    args: ['--fix=lf']
+
+  # Git
+  - id: check-added-large-files
+  - id: check-merge-conflict
+  - id: forbid-submodules
+  - id: no-commit-to-branch
+
+- repo: https://github.com/shellcheck-py/shellcheck-py
+  rev: v0.11.0.1
+  hooks:
+  - id: shellcheck
+
+- repo: https://github.com/google/yamlfmt
+  rev: v0.21.0
+  hooks:
+  - id: yamlfmt
+    exclude: '^charts/[^/]+/templates/'
+    args:
+    - '-formatter=indentless_arrays=true'
+    - '-formatter=pad_line_comments=2'
+    - '-formatter=retain_line_breaks=true'
+
+- repo: local
+  hooks:
+  - id: yaml-extension
+    name: Check if YAML files use *.yaml extension.
+    entry: YAML filenames must have .yaml extension.
+    language: fail
+    files: '.yml$'
+
+- repo: https://github.com/gruntwork-io/pre-commit
+  rev: v0.1.30
+  hooks:
+  - id: helmlint
+
+- repo: https://github.com/norwoodj/helm-docs
+  rev: v1.14.2
+  hooks:
+  - id: helm-docs
+    args:
+    # Search for charts only under the `charts` directory
+    - --chart-search-root=charts
