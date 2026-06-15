@@ -40,7 +40,30 @@ helm-docs
 
 This chart is derived from the `bundle.yaml` files published in the [SpiceDB Operator releases](https://github.com/authzed/spicedb-operator/releases). To update the chart, you diff the old and new bundle.yaml files and apply the changes to the Helm templates.
 
-### Step-by-step process
+### Automated updates
+
+Most updates are handled automatically. The `.github/workflows/update-operator.yml` workflow runs daily (and on-demand via `workflow_dispatch`), checks for a new operator release, and — if the chart is behind — runs `scripts/update-operator.sh` to:
+
+- regenerate `templates/configmap-update-graph.yaml` from the new bundle,
+- bump `Chart.yaml` (`version` minor bump, `appVersion`, source URL),
+- regenerate `README.md` via helm-docs,
+- verify with `helm lint` / `helm template` (and confirm the rendered update-graph is byte-identical to the bundle),
+
+then opens a PR via `peter-evans/create-pull-request`.
+
+The script encodes the manual runbook below for the common case (only the update-graph ConfigMap and the templated Deployment image tag change). **Drift guard:** if the bundle diff touches anything else (CRD / RBAC / ServiceAccount / Deployment spec), the script still applies the safe parts but marks the PR `needs-manual-review`, embeds the structural diff in the PR body, and fails a check. In that case, follow the manual process below to apply the structural changes to the relevant templates before merging.
+
+You can also run the script locally:
+
+```shell
+# Sync to the latest release
+scripts/update-operator.sh
+
+# Sync to a specific release
+scripts/update-operator.sh v1.25.1
+```
+
+### Step-by-step process (manual / drift cases)
 
 1. **Determine the current version.** Read the `appVersion` field from `charts/spicedb-operator/Chart.yaml`. This is the SpiceDB Operator release the chart currently targets (e.g., `v1.23.0`).
 
