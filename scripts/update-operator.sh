@@ -15,14 +15,18 @@
 #      spec). Drift needs a human; the script writes a report and sets an output
 #      flag rather than guessing.
 #   5. Bumps Chart.yaml (version minor bump, appVersion, source URL).
-#   6. Regenerates README.md via helm-docs (if available).
+#   6. Regenerates README.md via helm-docs (if on PATH).
 #   7. Verifies with helm lint + helm template.
+#
+# Intended to run on a GitHub-hosted runner, which provides curl, helm, yq, and
+# gh. It is driven by .github/workflows/update-operator.yml but is also safe to
+# run by hand on a checkout, provided those tools are installed and gh is authed.
 #
 # Usage:
 #   scripts/update-operator.sh [TARGET_VERSION]
 #
 #   TARGET_VERSION  Operator release tag (e.g. v1.25.1). If omitted, the latest
-#                   release is resolved from the GitHub API.
+#                   release is resolved via `gh release view`.
 #
 # Outputs (when $GITHUB_OUTPUT is set, for use in GitHub Actions):
 #   updated=true|false       whether the chart changed
@@ -69,32 +73,27 @@ require() { command -v "$1" >/dev/null 2>&1 || die "required command not found: 
 
 # --- Preconditions -----------------------------------------------------------
 
+# This script targets GitHub-hosted runners, where curl, helm, yq, and gh are
+# preinstalled. gh authenticates from GITHUB_TOKEN in the environment.
 require curl
 require helm
+require yq
+require gh
 [ -f "$CHART_YAML" ] || die "not in chart repo root (missing $CHART_YAML)"
 [ -f "$CONFIGMAP_TEMPLATE" ] || die "missing $CONFIGMAP_TEMPLATE"
 
 # --- Resolve versions --------------------------------------------------------
 
-# Current appVersion from Chart.yaml, e.g. appVersion: "v1.24.0" -> v1.24.0
-CURRENT_VERSION="$(
-  grep -E '^appVersion:' "$CHART_YAML" \
-    | sed -E 's/^appVersion:[[:space:]]*"?([^"[:space:]]+)"?.*/\1/'
-)"
-[ -n "$CURRENT_VERSION" ] || die "could not parse appVersion from $CHART_YAML"
+# Current appVersion from Chart.yaml (read-only; yq does not rewrite the file).
+CURRENT_VERSION="$(yq '.appVersion' "$CHART_YAML")"
+[ -n "$CURRENT_VERSION" ] && [ "$CURRENT_VERSION" != "null" ] \
+  || die "could not parse appVersion from $CHART_YAML"
 
 TARGET_VERSION="${1:-}"
 if [ -z "$TARGET_VERSION" ]; then
   log "resolving latest release of ${REPO}..."
-  # GitHub API: latest release tag. Honor GITHUB_TOKEN to avoid rate limits.
-  AUTH_HEADER=()
-  [ -n "${GITHUB_TOKEN:-}" ] && AUTH_HEADER=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
-  TARGET_VERSION="$(
-    curl -fsSL "${AUTH_HEADER[@]}" \
-      "https://api.github.com/repos/${REPO}/releases/latest" \
-      | grep -E '"tag_name":' \
-      | sed -E 's/.*"tag_name":[[:space:]]*"([^"]+)".*/\1/'
-  )"
+  # gh auto-authenticates from GITHUB_TOKEN in the environment.
+  TARGET_VERSION="$(gh release view --repo "$REPO" --json tagName --jq '.tagName')"
   [ -n "$TARGET_VERSION" ] || die "could not resolve latest release tag"
 fi
 
@@ -108,7 +107,7 @@ if [ "$CURRENT_VERSION" = "$TARGET_VERSION" ]; then
   log "chart is already at ${TARGET_VERSION}; nothing to do."
   emit updated false
   emit drift false
-  emit chart_version "$(grep -E '^version:' "$CHART_YAML" | sed -E 's/^version:[[:space:]]*//')"
+  emit chart_version "$(yq '.version' "$CHART_YAML")"
   exit 0
 fi
 
@@ -231,12 +230,16 @@ emit drift "$DRIFT"
 # - appVersion: target version.
 # - source URL: point the authzed release-tag line at the target version.
 
-CHART_VERSION="$(grep -E '^version:' "$CHART_YAML" | sed -E 's/^version:[[:space:]]*//')"
+CHART_VERSION="$(yq '.version' "$CHART_YAML")"
 IFS='.' read -r CV_MAJOR CV_MINOR _CV_PATCH <<< "$CHART_VERSION"
 [ -n "${CV_MAJOR:-}" ] && [ -n "${CV_MINOR:-}" ] || die "could not parse chart version: $CHART_VERSION"
 NEW_CHART_VERSION="${CV_MAJOR}.$((CV_MINOR + 1)).0"
 
-# Use a tmp file + mv for portable in-place edits (no sed -i portability issues).
+# NOTE: We deliberately use line-targeted sed here rather than `yq -i`. yq
+# reserializes the whole document, which reflows Chart.yaml's list indentation
+# and strips the blank lines between its commented sections — a noisy diff.
+# sed changes only the three lines we intend and leaves the rest byte-for-byte
+# untouched. tmp file + mv avoids sed -i portability issues.
 tmp_chart="$(mktemp)"
 sed -E \
   -e "s|^version:[[:space:]]*.*|version: ${NEW_CHART_VERSION}|" \
@@ -252,11 +255,8 @@ emit chart_version "$NEW_CHART_VERSION"
 if command -v helm-docs >/dev/null 2>&1; then
   log "running helm-docs..."
   helm-docs >/dev/null 2>&1 || log "warning: helm-docs failed; README not regenerated"
-elif command -v nix >/dev/null 2>&1; then
-  log "running helm-docs via nix..."
-  nix run nixpkgs#helm-docs >/dev/null 2>&1 || log "warning: nix helm-docs failed; README not regenerated"
 else
-  log "warning: helm-docs not available; README not regenerated"
+  log "warning: helm-docs not on PATH; README not regenerated"
 fi
 
 # --- Verify ------------------------------------------------------------------
