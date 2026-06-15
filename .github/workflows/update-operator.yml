@@ -31,10 +31,49 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Cheap early exit: compare the chart's current appVersion against the
+      # target (the workflow input, or the latest operator release). If they
+      # already match there is nothing to do, so we skip installing Helm /
+      # helm-docs, downloading bundles, and running the full sync.
+      - name: Check for update
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          current="$(
+            grep -E '^appVersion:' charts/spicedb-operator/Chart.yaml \
+              | sed -E 's/^appVersion:[[:space:]]*"?([^"[:space:]]+)"?.*/\1/'
+          )"
+          [ -n "$current" ] || { echo "::error::could not parse appVersion"; exit 1; }
+
+          target="${{ inputs.target_version }}"
+          if [ -z "$target" ]; then
+            target="$(
+              curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                "https://api.github.com/repos/authzed/spicedb-operator/releases/latest" \
+                | grep -E '"tag_name":' \
+                | sed -E 's/.*"tag_name":[[:space:]]*"([^"]+)".*/\1/'
+            )"
+            [ -n "$target" ] || { echo "::error::could not resolve latest release tag"; exit 1; }
+          fi
+
+          echo "current_version=$current" >> "$GITHUB_OUTPUT"
+          echo "target_version=$target" >> "$GITHUB_OUTPUT"
+
+          if [ "$current" = "$target" ]; then
+            echo "has_update=false" >> "$GITHUB_OUTPUT"
+            echo "Chart is already at ${target}; nothing to do."
+          else
+            echo "has_update=true" >> "$GITHUB_OUTPUT"
+            echo "Update available: ${current} -> ${target}."
+          fi
+
       - name: Install Helm
+        if: steps.check.outputs.has_update == 'true'
         uses: azure/setup-helm@v4
 
       - name: Install helm-docs
+        if: steps.check.outputs.has_update == 'true'
         run: |
           HELM_DOCS_VERSION=1.14.2
           curl -fsSL "https://github.com/norwoodj/helm-docs/releases/download/v${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION}_Linux_x86_64.tar.gz" \
@@ -42,6 +81,7 @@ jobs:
           helm-docs --version
 
       - name: Run update script
+        if: steps.check.outputs.has_update == 'true'
         id: update
         env:
           # Used by the script to authenticate the GitHub releases API call and
@@ -49,7 +89,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WORKDIR: ${{ runner.temp }}/operator-update
         run: |
-          ./scripts/update-operator.sh "${{ inputs.target_version }}"
+          ./scripts/update-operator.sh "${{ steps.check.outputs.target_version }}"
 
       - name: Build PR body
         if: steps.update.outputs.updated == 'true'
